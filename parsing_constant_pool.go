@@ -182,10 +182,7 @@ func decodeClassAccessFlags(flags int) string {
 		names = append(names, "final")
 	}
 	if flags&0x0020 != 0 {
-		names = append(names, "super")
-	}
-	if flags&0x0200 != 0 {
-		names = append(names, "interface")
+		names = append(names, "super")  // <- wat?
 	}
 	if flags&0x0400 != 0 {
 		names = append(names, "abstract")
@@ -193,8 +190,11 @@ func decodeClassAccessFlags(flags int) string {
 	if flags&0x1000 != 0 {
 		names = append(names, "synthetic")
 	}
+	if flags&0x0200 != 0 {
+		names = append(names, "interface")
+	}
 	if flags&0x2000 != 0 {
-		names = append(names, "annotation")
+		names = append(names, "@interface")
 	}
 	if flags&0x4000 != 0 {
 		names = append(names, "enum")
