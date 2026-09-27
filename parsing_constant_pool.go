@@ -166,7 +166,11 @@ func resolveClassName(pool []*ConstantPoolEntry, classIndex int) string {
 	if DEBUG {
 		fmt.Printf("=== resolveClassName end: pool[classIndex].nameIndex=%d\n", pool[classIndex].nameIndex)
 	}
-	return utf8At(pool, pool[classIndex].nameIndex)
+
+	val := utf8At(pool, pool[classIndex].nameIndex)
+	val = transformLiteral(val)
+
+	return val
 }
 
 func decodeClassAccessFlags(flags int) string {

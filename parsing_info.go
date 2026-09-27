@@ -14,7 +14,10 @@ func readMember(reader *ClassReader, pool []*ConstantPoolEntry, typ string) {
 	attributesCount := reader.readU2()
 
 	if LOGGING {
-		fmt.Printf("  %s %s %s\n", typ, utf8At(pool, nameIndex), utf8At(pool, descriptorIndex))
+		descriptor := utf8At(pool, descriptorIndex)
+		descriptor = transformDescriptor(descriptor)
+
+		fmt.Printf("  %s %s %s\n", typ, utf8At(pool, nameIndex), descriptor)
 	}
 
 	for i := 0; i < attributesCount; i++ {

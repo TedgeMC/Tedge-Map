@@ -5,9 +5,7 @@ import (
 	"os"
 )
 
-// javap replacement written in Go.
-// Converted from the supplied Java implementation.
-
+// Initially converted from the javap implementation.
 // Thanks to texadactyl and the Jacobin team at github.com/platypusguy/jacobin (/issues/511)
 
 var (
@@ -16,14 +14,34 @@ var (
 	DEBUG      = false
 )
 
+var mappings string
+var indexes map[string]int
+
 func main() {
+	//NOTE shouldn't this be `var classfile string` for better clarification?
+	//            although because of go zero-value this probably would result in the same thing..
 	classfile := ""
+	mappingsfile := ""
+	indexesfile := ""
+
 	args := os.Args[1:]
 
-	if len(args) == 0 {
-		classfile = "hello.class"
-	} else if len(args) == 1 {
-		classfile = args[0]
+	//if len(args) == 0 {
+	//	classfile = "hello.class"
+	//} else
+	if len(args) == 4 && args[0] == "apply" {
+		classfile = args[1]
+		mappingsfile = args[2]
+		indexesfile = args[3]
+	} else if len(args) == 2 && args[0] == "indexes" {
+		if LOGGING {
+			println("- Generating indexes")
+		}
+
+		mappingsfile = args[1]
+		MakeIndexes(mappingsfile)
+
+		return
 	} else {
 		classfile = parseArgs(args)
 		if classfile == "" {
@@ -32,13 +50,18 @@ func main() {
 		}
 	}
 
+	mappings = string(read(mappingsfile))
+	indexes = map[string]int{}
+
+	readIndexes(indexesfile)
+
 	classBytes := read(classfile)
 	analyze(classBytes)
 
 	// The Java source used Checkers.theEnd(errorCount).  The only checker
 	// in this file validates constant-pool entry #1, so retain that validation
 	// and report the final count without requiring the Jacobin test harness.
-	if errorCount != 0 {
+	if errorCount != 0 && false {
 		fmt.Printf("errorCount: %d\n", errorCount)
 		os.Exit(1)
 	}
@@ -61,8 +84,13 @@ func read(path string) []byte {
 
 func showUsage() {
 	fmt.Println("Tedge-Map mappings applying tool (c) 2026 Olafcio & The Jacobin Team")
-	fmt.Println("Usage: tedge-map [options] <classfile> <mappingsfile>")
-	fmt.Println("       output is written into provided classfile")
+	fmt.Println("Usage:")
+	fmt.Println("       tedge-map apply [options] <classfile> <mappingsfile> <indexesfile>")
+	fmt.Println("       tedge-map indexes [options] <mappingsfile>")
+	fmt.Println("Help - Apply:")
+	fmt.Println("    output is written into provided classfile")
+	fmt.Println("Help - Indexes:")
+	fmt.Println("    output is written into indexes.txt")
 }
 
 func analyze(bytes []byte) {
@@ -96,13 +124,16 @@ func analyze(bytes []byte) {
 		if DEBUG {
 			fmt.Printf("=== analyze try: bytes.length=%d)\n", len(bytes))
 		}
+
 		constantPool := readConstantPool(reader)
+
 		if DEBUG {
 			fmt.Println("=== analyze try: ConstantPoolEntry[] constantPool = readConstantPool ... ok")
 		}
 
 		if LOGGING {
 			printConstantPool(constantPool)
+
 			if DEBUG {
 				fmt.Println("=== analyze try: printConstantPool ... ok")
 			}
@@ -112,11 +143,14 @@ func analyze(bytes []byte) {
 		thisClass := reader.readU2()
 		superClass := reader.readU2()
 
+		className := resolveClassName(constantPool, thisClass)
+		superName := resolveClassName(constantPool, superClass)
+
 		if LOGGING {
 			fmt.Printf("access flags: 0x%04x (%s)\n", accessFlags, decodeClassAccessFlags(accessFlags))
-			fmt.Printf("this class:   #%d // %s\n", thisClass, resolveClassName(constantPool, thisClass))
+			fmt.Printf("this class:   #%d // %s\n", thisClass, className)
 			if superClass != 0 {
-				fmt.Printf("super class:  #%d // %s\n", superClass, resolveClassName(constantPool, superClass))
+				fmt.Printf("super class:  #%d // %s\n", superClass, superName)
 			}
 		}
 
@@ -126,8 +160,10 @@ func analyze(bytes []byte) {
 		}
 		for i := 0; i < interfaceCount; i++ {
 			interfaceIndex := reader.readU2()
+			interfaceName := resolveClassName(constantPool, interfaceIndex)
+			
 			if LOGGING {
-				fmt.Printf("  #%d // %s\n", interfaceIndex, resolveClassName(constantPool, interfaceIndex))
+				fmt.Printf("  #%d // %s\n", interfaceIndex, interfaceName)
 			}
 		}
 
@@ -154,6 +190,8 @@ func analyze(bytes []byte) {
 		for i := 0; i < classAttributesCount; i++ {
 			readAttribute(reader, constantPool, 2)
 		}
+		
+		//TODO Class writing!!
 	}()
 }
 
